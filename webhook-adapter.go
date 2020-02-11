@@ -26,6 +26,7 @@ var (
 	tlsCertPath  string
 	tlsKeyPath   string
 	deviceClient *cb.DeviceClient
+	InboundURL string
 )
 
 func init() {
@@ -40,6 +41,7 @@ func init() {
 	flag.BoolVar(&enableTLS, "enableTLS", false, "enable TLS on http listener (must provide tlsCertPath and tlsKeyPath params if enabled)")
 	flag.StringVar(&tlsCertPath, "tlsCertPath", "", "path to TLS .crt file (required if enableTLS flag is set)")
 	flag.StringVar(&tlsKeyPath, "tlsKeyPath", "", "path to TLS .key file (required if enableTLS flag is set)")
+	flag.StringVar(&InboundURL, "inboundURL", "/", "URL Path for inbound webhook URL, ex /abcdef/endpoint1")
 }
 
 type requestJSONBody struct {
@@ -171,7 +173,7 @@ func main() {
 	}
 	log.Printf("MQTT connected and adapter about to listen on port: %s\n", listenPort)
 
-	http.HandleFunc("/", handleRequest)
+	http.HandleFunc(InboundURL, handleRequest)
 
 	if enableTLS {
 		log.Fatal(http.ListenAndServeTLS(":"+listenPort, tlsCertPath, tlsKeyPath, nil))

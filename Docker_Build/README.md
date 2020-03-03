@@ -4,7 +4,7 @@
 
 - Building the image requires internet access
 
-### Creating the Docker image for the AMQP Adapter
+### Creating the Docker image for the Webhook Adapter
 
 Clone this repository and execute the following commands to create a docker image for the webhook-adapter adapter:  
 

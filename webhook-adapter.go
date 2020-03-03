@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	cb "github.com/clearblade/Go-SDK"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +11,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	cb "github.com/clearblade/Go-SDK"
 )
 
 var (
@@ -67,6 +69,7 @@ func usage() {
 
 func handleRequest(rw http.ResponseWriter, r *http.Request) {
 	timeReceived := time.Now().UTC().Format(time.RFC3339)
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	qp := r.URL.Query()
 
@@ -76,50 +79,58 @@ func handleRequest(rw http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("error reading body of request: %s\n", err.Error())
+
+		//Return error 500 to client
+		log.Printf("Returning 500 error to client")
+		http.Error(rw, fmt.Sprintf("Error reading body of request: %s\n", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	var bodyJSON interface{}
 	var b []byte
 
+	msg := &requestStringBody{
+		RequestURL:   r.Host + r.RequestURI,
+		URLParams:    qp,
+		Headers:      r.Header,
+		Method:       r.Method,
+		TimeReceived: timeReceived,
+	}
+
+	//Parse the request as JSON. If parsing returns an error,
+	//assume the request contains a raw string
 	if err := json.Unmarshal(body, &bodyJSON); err != nil {
 		log.Println("Unable to parse body into JSON object, sending as raw string instead.")
-		msg := &requestStringBody{
-			RequestURL:   r.Host + r.RequestURI,
-			URLParams:    qp,
-			Headers:      r.Header,
-			Method:       r.Method,
-			Body:         string(body),
-			TimeReceived: timeReceived,
-		}
-
-		b, err = json.Marshal(msg)
-		if err != nil {
-			log.Printf("Failed to convert request structure into a string: %s\n", err.Error())
-			return
-		}
+		msg.Body = string(body)
 	} else {
-		msg := &requestJSONBody{
-			RequestURL:   r.Host + r.RequestURI,
-			URLParams:    qp,
-			Headers:      r.Header,
-			Method:       r.Method,
-			Body:         bodyJSON,
-			TimeReceived: timeReceived,
-		}
+		msg.Body = bodyJSON.(string)
+	}
 
-		b, err = json.Marshal(msg)
-		if err != nil {
-			log.Printf("Failed to convert request structure into a string: %s\n", err.Error())
-			return
-		}
+	b, err = json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to convert request structure into a string: %s\n", err.Error())
+
+		//return 500 error to client
+		log.Printf("Returning 500 error to client")
+		http.Error(rw, fmt.Sprintf("Failed to convert request structure into a string: %s\n", err.Error()), http.StatusInternalServerError)
+		return
 	}
 
 	if err := deviceClient.Publish(topicName, b, 2); err != nil {
 		log.Printf("Unable to publish request: %s\n", err.Error())
+
+		//return 500 error to client
+		log.Printf("Returning 500 error to client")
+		http.Error(rw, "", http.StatusInternalServerError)
 		return
 	}
 
+	//return success to client
+	log.Printf("Returning success to client")
+	rw.WriteHeader(http.StatusOK)
+
+	//Micro-Aide devices require GOOD to be returned
+	rw.Write([]byte("GOOD"))
 }
 
 func validateFlags() {

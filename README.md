@@ -1,5 +1,3 @@
-sudo ./webhook-adapter -platformURL https://platform.clearblade.com:443 -messagingURL platform.clearblade.com:1883 -deviceName slackAdapter -activeKey bH11570h39kk63OyTXf -receiverPort 80 -systemKey bce281e40c0b29f88fa01 -systemSecret BCE281E40BF09BA7EE4D > webhook-adapter.log
-
 # webhook-adapter Adapter
 
 The __webhook-adapter__ adapter provides the ability for the ClearBlade platform to receive incoming HTTP requests via MQTT.
